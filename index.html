@@ -1,18 +1,18 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Portal de fichas técnicas</title>
+    <title>Technical Data Sheet Portal</title>
     <style>
       :root {
         font-family: "Helvetica Neue", Arial, sans-serif;
         color: #222;
         font-size: 12px;
         background: #ececec;
-        --page-width: 21.59cm; /* Carta */
-        --page-height: 27.94cm;
-        --page-margin: 1.5cm;
+        --page-width: 210mm; /* A4 */
+        --page-height: 297mm;
+        --page-margin: 20mm; /* Professional padding */
         --render-size: calc((var(--page-width) - var(--page-margin) * 2) * 0.245);
         --meta-height: calc(4mm + 2mm);
       }
@@ -27,24 +27,41 @@
 
       @media print {
         @page {
-          size: Letter;
-          margin: 0;
+          size: A4;
+          margin: 20mm;
         }
         body {
           background: #fff;
+          -webkit-print-color-adjust: exact;
+          print-color-adjust: exact;
         }
         .layout {
           padding: 0;
         }
         .sheet {
           width: calc(var(--page-width) - var(--page-margin) * 2);
-          margin: 0 auto 16px;
+          max-width: 210mm;
+          margin: 0 auto 0;
           padding: var(--page-margin);
           box-shadow: none;
           page-break-after: always;
+          page-break-inside: avoid;
         }
         .sheet:last-child {
           page-break-after: auto;
+        }
+        /* Avoid cuts in logical blocks */
+        .sheet-header, .sheet .meta-bar, .sheet .product-name, .sheet .last-update,
+        .sheet .code-box, .sheet .description, .sheet .split, .sheet .tech-grid,
+        .sheet table, .sheet .icon-row, .sheet .photometry, .sheet .diagram,
+        .sheet .notes, .sheet h2 {
+          page-break-inside: avoid;
+          break-inside: avoid;
+        }
+        /* Page breaks between long tables if needed */
+        .sheet table tbody tr {
+          page-break-inside: avoid;
+          break-inside: avoid;
         }
       }
 
@@ -580,6 +597,102 @@
         margin: 16px 32px 32px;
       }
 
+      /* Viewer estilo Adaptio Proposal */
+      .ficha-viewer-overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 9999;
+        overflow-y: auto;
+        padding: 24px;
+        align-items: flex-start;
+        justify-content: center;
+      }
+      .ficha-viewer-overlay.open {
+        display: flex;
+      }
+      .ficha-viewer-container {
+        background: #fff;
+        max-width: 210mm;
+        width: 100%;
+        margin: 0 auto 48px;
+        min-height: 297mm;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+      }
+      .ficha-viewer-toolbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 16px 20px;
+        background: #111;
+        color: #fff;
+      }
+      .ficha-viewer-toolbar h2 {
+        margin: 0;
+        font-size: 1rem;
+        font-weight: 600;
+        letter-spacing: 0.04em;
+      }
+      .ficha-viewer-toolbar-actions {
+        display: flex;
+        gap: 10px;
+      }
+      .ficha-viewer-toolbar button {
+        padding: 8px 14px;
+        border-radius: 6px;
+        font-size: 0.75rem;
+        cursor: pointer;
+        border: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .ficha-viewer-toolbar .btn-close {
+        background: #444;
+        color: #fff;
+      }
+      .ficha-viewer-toolbar .btn-close:hover {
+        background: #555;
+      }
+      .ficha-viewer-toolbar .btn-print {
+        background: #2563eb;
+        color: #fff;
+      }
+      .ficha-viewer-toolbar .btn-print:hover {
+        background: #1d4ed8;
+      }
+      .ficha-viewer-toolbar .btn-pdf {
+        background: #16a34a;
+        color: #fff;
+      }
+      .ficha-viewer-toolbar .btn-pdf:hover {
+        background: #15803d;
+      }
+      .ficha-viewer-document {
+        padding: 20mm;
+      }
+      .ficha-viewer-document .sheet {
+        margin: 0;
+        padding: 0;
+        box-shadow: none;
+      }
+      @media print {
+        body.viewer-printing * { visibility: hidden; }
+        body.viewer-printing .ficha-viewer-overlay,
+        body.viewer-printing .ficha-viewer-overlay * { visibility: visible; }
+        body.viewer-printing .ficha-viewer-overlay {
+          position: absolute;
+          inset: 0;
+          background: #fff;
+          padding: 0;
+          overflow: visible;
+        }
+        body.viewer-printing .ficha-viewer-toolbar { display: none !important; }
+        body.viewer-printing .ficha-viewer-container { box-shadow: none; max-width: none; }
+        body.viewer-printing .ficha-viewer-document { padding: 20mm; }
+      }
 
       @media (max-width: 1000px) {
         .sheet .tech-grid {
@@ -601,54 +714,55 @@
   </head>
   <body>
     <header>
-      <h1>Portal de fichas técnicas</h1>
-      <p>Rellena los campos y exporta un PDF único por luminaria.</p>
+      <h1>Technical Data Sheet Portal</h1>
+      <p>Fill in the fields and export a unique PDF per fixture.</p>
     </header>
 
     <div class="layout">
       <div class="panel" id="formPanel">
         <div class="tab-bar">
-          <button type="button" class="tab-button active" data-target="general">Datos generales</button>
-          <button type="button" class="tab-button" data-target="fotos">IMÁGENES</button>
-          <button type="button" class="tab-button" data-target="configuraciones">Configuraciones</button>
-          <button type="button" class="tab-button" data-target="iconos">Certificaciones</button>
-          <button type="button" class="tab-button" data-target="tecnicos">Datos técnicos</button>
-          <button type="button" class="tab-button" data-target="notas">Notas finales</button>
+          <button type="button" class="tab-button active" data-target="general">General Data</button>
+          <button type="button" class="tab-button" data-target="fotos">IMAGES</button>
+          <button type="button" class="tab-button" data-target="configuraciones">Configurations</button>
+          <button type="button" class="tab-button" data-target="iconos">Certifications</button>
+          <button type="button" class="tab-button" data-target="tecnicos">Technical Data</button>
+          <button type="button" class="tab-button" data-target="notas">Final Notes</button>
         </div>
 
         <div class="section active" data-section-content="general">
           <div class="section-header">
-            <h2>Datos generales</h2>
+            <h2>General Data</h2>
             <button type="button" class="reset-btn" data-section="general">Reset</button>
           </div>
-          <label for="productName">Nombre del producto</label>
-          <input type="text" id="productName" placeholder="Ingresar dato" />
+          <label for="productName">Product name</label>
+          <input type="text" id="productName" placeholder="Enter data" />
 
           <div class="grid-2">
             <div>
-              <label for="brand">Marca / Línea</label>
-              <input type="text" id="brand" placeholder="Ingresar dato" />
+              <label for="brand">Brand / Line</label>
+              <input type="text" id="brand" placeholder="Enter data" />
             </div>
             <div>
-              <label for="code">Código / Referencia</label>
-              <input type="text" id="code" placeholder="Ingresar dato" />
+              <label for="code">Code / Reference</label>
+              <input type="text" id="code" placeholder="Enter data" />
             </div>
           </div>
 
-          <label for="lastUpdate">Última actualización</label>
-          <input type="text" id="lastUpdate" placeholder="Ingresar dato" />
+          <label for="lastUpdate">Last update</label>
+          <input type="text" id="lastUpdate" placeholder="Enter data" />
 
-          <label for="codeDescription">Descripción corta</label>
-          <input type="text" id="codeDescription" placeholder="Ingresar dato" />
+          <label for="codeDescription">Short description</label>
+          <input type="text" id="codeDescription" placeholder="Enter data" />
 
-          <label for="description">Descripción comercial / técnica</label>
-          <textarea id="description" placeholder="Ingresar dato"></textarea>
+          <label for="description">Commercial / technical description</label>
+          <textarea id="description" placeholder="Enter data"></textarea>
 
           <div class="grid-2">
             <div>
-              <label for="montaje">Montaje</label>
+              <label for="montaje">Product Type</label>
               <select id="montaje">
-                <option value="">Selecciona una opción</option>
+                <option value="">Select an option</option>
+                <option>Bulb</option>
                 <option>Downlights</option>
                 <option>Spotlights</option>
                 <option>Wall / Ceiling</option>
@@ -659,27 +773,27 @@
               </select>
             </div>
             <div>
-              <label for="equipo">Equipo</label>
-              <input type="text" id="equipo" placeholder="Ingresar dato" />
+              <label for="equipo">Equipment</label>
+              <input type="text" id="equipo" placeholder="Enter data" />
             </div>
           </div>
           <div class="grid-3">
             <div>
-              <label for="ancho">Ancho (mm)</label>
+              <label for="ancho">Width (mm)</label>
               <input type="number" id="ancho" placeholder="-" />
             </div>
             <div>
-              <label for="alto">Alto (mm)</label>
+              <label for="alto">Height (mm)</label>
               <input type="number" id="alto" placeholder="-" />
             </div>
             <div>
-              <label for="fondo">Fondo (mm)</label>
+              <label for="fondo">Depth (mm)</label>
               <input type="number" id="fondo" placeholder="-" />
             </div>
           </div>
           <div class="grid-2">
             <div>
-              <label for="peso">Peso (kg)</label>
+              <label for="peso">Weight (kg)</label>
               <input type="number" step="0.01" id="peso" placeholder="-" />
             </div>
           </div>
@@ -687,8 +801,8 @@
           <div class="color-group">
             
             <div class="section-header">
-              <h3>Colores</h3>
-              <button type="button" class="btn-secondary" id="addColorGeneral">Agregar color</button>
+              <h3>Colors</h3>
+              <button type="button" class="btn-secondary" id="addColorGeneral">Add color</button>
             </div>
             <div id="colorContainer"></div>
           </div>
@@ -696,58 +810,58 @@
 
         <div class="section" data-section-content="fotos">
           <div class="section-header">
-            <h2>IMÁGENES</h2>
+            <h2>IMAGES</h2>
             <button type="button" class="reset-btn" data-section="fotos">Reset</button>
           </div>
-          <label for="photoInput">Imagen</label>
+          <label for="photoInput">Image</label>
           <input type="file" id="photoInput" accept="image/*" />
 
           <label for="logoInput">Logo</label>
           <input type="file" id="logoInput" accept="image/*" />
 
-          <label for="diagramInput">Fotometría</label>
+          <label for="diagramInput">Photometry</label>
           <input type="file" id="diagramInput" accept="image/*" />
         </div>
 
         <div class="section" data-section-content="configuraciones">
           <div class="section-header">
-            <h2>Configuraciones</h2>
+            <h2>Configurations</h2>
             <button type="button" class="reset-btn" data-section="configuraciones">Reset</button>
           </div>
           <div id="configContainer"></div>
-          <button type="button" id="addConfig">Agregar configuración</button>
+          <button type="button" id="addConfig">Add configuration</button>
         </div>
 
         
 
         <div class="section" data-section-content="iconos">
           <div class="section-header">
-            <h2>Certificaciones</h2>
+            <h2>Certifications</h2>
             <button type="button" class="reset-btn" data-section="iconos">Reset</button>
           </div>
-          <label for="iconList">Escribe cada código separado por coma (IP20, IP40, CE...)</label>
-          <input type="text" id="iconList" placeholder="Ingresar dato" />
+          <label for="iconList">Enter each code separated by comma (IP20, IP40, CE...)</label>
+          <input type="text" id="iconList" placeholder="Enter data" />
         </div>
 
         <div class="section" data-section-content="tecnicos">
           <div class="section-header">
-            <h2>Datos técnicos</h2>
+            <h2>Technical Data</h2>
             <button type="button" class="reset-btn" data-section="tecnicos">Reset</button>
           </div>
           <div id="techContainer"></div>
-          <button type="button" id="addTechRow" class="btn-secondary">Agregar fila</button>
+          <button type="button" id="addTechRow" class="btn-secondary">Add row</button>
         </div>
 
         <div class="section" data-section-content="notas">
           <div class="section-header">
-            <h2>Notas finales</h2>
+            <h2>Final Notes</h2>
             <button type="button" class="reset-btn" data-section="notas">Reset</button>
           </div>
-          <label for="controlNotes">Notas de control</label>
-          <textarea id="controlNotes" rows="3" placeholder="Ingresar dato"></textarea>
+          <label for="controlNotes">Control notes</label>
+          <textarea id="controlNotes" rows="3" placeholder="Enter data"></textarea>
 
-          <label for="footerNote">Nota legal / pie</label>
-          <input type="text" id="footerNote" placeholder="Ingresar dato" />
+          <label for="footerNote">Legal note / footer</label>
+          <input type="text" id="footerNote" placeholder="Enter data" />
         </div>
       </div>
 
@@ -757,8 +871,22 @@
     </div>
 
     <div class="actions">
-      <button id="exportButton">Exportar PDF</button>
-      <button class="btn-secondary" id="printButton">Imprimir</button>
+      <button id="viewerButton">View PDF</button>
+    </div>
+
+    <!-- Viewer HTML (estilo Adaptio Proposal) -->
+    <div id="fichaViewer" class="ficha-viewer-overlay">
+      <div class="ficha-viewer-container">
+        <div class="ficha-viewer-toolbar">
+          <h2>Technical Data Sheet — Preview</h2>
+          <div class="ficha-viewer-toolbar-actions">
+            <button type="button" class="btn-close" id="viewerClose">Close</button>
+            <button type="button" class="btn-print" id="viewerPrint">Print</button>
+            <button type="button" class="btn-pdf" id="viewerDownloadPdf">Download PDF</button>
+          </div>
+        </div>
+        <div class="ficha-viewer-document" id="viewerDocument"></div>
+      </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
@@ -798,19 +926,19 @@
           { nombre: "", codigo: "" },
         ],
         datosTecnicos: [
-          { campo: "lm de sistema", valor: "0", unidad: "lm" },
-          { campo: "Temperatura de color", valor: "0", unidad: "K" },
-          { campo: "W de sistema", valor: "0", unidad: "W" },
+          { campo: "System lm", valor: "0", unidad: "lm" },
+          { campo: "Color temperature", valor: "0", unidad: "K" },
+          { campo: "System W", valor: "0", unidad: "W" },
           { campo: "MacAdam Step", valor: "0", unidad: "SDCM" },
-          { campo: "lm de la fuente", valor: "0", unidad: "lm" },
-          { campo: "Vida útil LED", valor: ">50,000h L80 B10", unidad: "h" },
-          { campo: "W de la fuente", valor: "0", unidad: "W" },
-          { campo: "Eficiencia luminosa", valor: "0", unidad: "lm/W" },
-          { campo: "lm en modo emergencia", valor: "0", unidad: "lm" },
-          { campo: "Flujo emisión > 90°", valor: "0", unidad: "lm" },
+          { campo: "Source lm", valor: "0", unidad: "lm" },
+          { campo: "LED lifespan", valor: ">50,000h L80 B10", unidad: "h" },
+          { campo: "Source W", valor: "0", unidad: "W" },
+          { campo: "Luminous efficiency", valor: "0", unidad: "lm/W" },
+          { campo: "Emergency mode lm", valor: "0", unidad: "lm" },
+          { campo: "Emission flux > 90°", valor: "0", unidad: "lm" },
           { campo: "Light Output Ratio (L.O.R.)", valor: "0", unidad: "%" },
           { campo: "Control", valor: "On/Off", unidad: "-" },
-          { campo: "CRI (mínimo)", valor: "0", unidad: "Ra" },
+          { campo: "CRI (min)", valor: "0", unidad: "Ra" },
         ],
       };
 
@@ -883,19 +1011,19 @@
         wrapper.innerHTML = `
           <div class="grid-3">
             <div>
-              <label>Código</label>
+              <label>Code</label>
               <input type="text" class="cfg-codigo" placeholder="-" value="${config.codigo}" />
             </div>
             <div>
-              <label>Descripción</label>
+              <label>Description</label>
               <input type="text" class="cfg-descripcion" placeholder="-" value="${config.descripcion}" />
             </div>
             <div>
-              <label>Componente</label>
+              <label>Component</label>
               <input type="text" class="cfg-estado" placeholder="-" value="${config.componente || ""}" />
             </div>
           </div>
-          <button type="button" class="remove">Eliminar</button>`;
+          <button type="button" class="remove">Remove</button>`;
         wrapper.querySelector(".remove").addEventListener("click", () => {
           wrapper.remove();
           updatePreview();
@@ -913,15 +1041,15 @@
         wrapper.innerHTML = `
           <div class="grid-2">
             <div>
-              <label>Nombre</label>
+              <label>Name</label>
               <input type="text" class="color-nombre" value="${color.nombre}" />
             </div>
             <div>
-              <label>Código</label>
+              <label>Code</label>
               <input type="text" class="color-codigo" value="${color.codigo}" />
             </div>
           </div>
-          <button type="button" class="remove">Eliminar</button>`;
+          <button type="button" class="remove">Remove</button>`;
         wrapper.querySelector(".remove").addEventListener("click", () => {
           wrapper.remove();
           updatePreview();
@@ -939,19 +1067,19 @@
         wrapper.innerHTML = `
           <div class="grid-3">
             <div>
-              <label>Campo</label>
+              <label>Field</label>
               <input type="text" class="tech-campo" value="${row.campo}" readonly />
             </div>
             <div>
-              <label>Valor</label>
+              <label>Value</label>
               <input type="text" class="tech-valor" placeholder="-" value="${row.valor || ""}" />
             </div>
             <div>
-              <label>Unidad</label>
+              <label>Unit</label>
               <input type="text" class="tech-unidad" value="${row.unidad}" readonly />
             </div>
           </div>
-          <button type="button" class="remove">Eliminar</button>`;
+          <button type="button" class="remove">Remove</button>`;
         wrapper.querySelector(".remove").addEventListener("click", () => {
           wrapper.remove();
           updatePreview();
@@ -1005,10 +1133,10 @@
           )
           .join("");
         const colorText = (data.colores.length
-          ? data.colores.map((color) => `${(color.nombre || "Ingresar dato").trim()}${color.codigo ? ` (${color.codigo})` : ""}`)
-          : ["Ingresar dato"]);
+          ? data.colores.map((color) => `${(color.nombre || "Enter data").trim()}${color.codigo ? ` (${color.codigo})` : ""}`)
+          : ["Enter data"]);
 
-        const formatText = (value) => (value && value.trim().length ? value : "Ingresar dato");
+        const formatText = (value) => (value && value.trim().length ? value : "Enter data");
         const optionalText = (value) => (value && value.trim().length ? value.trim() : "");
 
         const photoSrc = data.photo || "";
@@ -1041,9 +1169,9 @@
             </colgroup>
             <thead>
               <tr>
-                <th>Campo</th>
-                <th>Valor</th>
-                <th>Unidad</th>
+                <th>Field</th>
+                <th>Value</th>
+                <th>Unit</th>
               </tr>
             </thead>
             <tbody>
@@ -1066,7 +1194,7 @@
           <div class="sheet preview-sheet">
             <div class="sheet-header">
               <div class="photo-wrapper">
-                ${photoSrc ? `<img src="${photoSrc}" alt="Imagen del producto" />` : "Render principal"}
+                ${photoSrc ? `<img src="${photoSrc}" alt="Product image" />` : "Main render"}
               </div>
               <div class="header-right">
                 <div class="logo-wrapper">
@@ -1078,42 +1206,42 @@
                 </div>
               </div>
               <div class="meta-bar">
-                <span class="meta-code">Código: ${displayPrimaryCode}</span>
+                <span class="meta-code">Code: ${displayPrimaryCode}</span>
               </div>
             </div>
 
             <div class="product-name">${displayProductName}</div>
             <div class="product-brand">${displayBrand}</div>
-            <div class="last-update">Última actualización: ${displayLastUpdate}</div>
+            <div class="last-update">Last update: ${displayLastUpdate}</div>
 
-            <h2>Configuraciones del producto</h2>
+            <h2>Product configurations</h2>
             <table>
               <thead>
                 <tr>
-                  <th>Código</th>
-                  <th>Descripción</th>
-                  <th>Componente</th>
+                  <th>Code</th>
+                  <th>Description</th>
+                  <th>Component</th>
                 </tr>
               </thead>
               <tbody>
-                ${configRows || "<tr><td colspan='3'>Sin configuraciones</td></tr>"}
+                ${configRows || "<tr><td colspan='3'>No configurations</td></tr>"}
               </tbody>
             </table>
 
             <div class="code-box">
-              <div><strong>Código producto:</strong> ${displayCode}</div>
-              <div><strong>Descripción corta:</strong> ${displayCodeDescription}</div>
+              <div><strong>Product code:</strong> ${displayCode}</div>
+              <div><strong>Short description:</strong> ${displayCodeDescription}</div>
             </div>
 
-            <h2>Descripción</h2>
+            <h2>Description</h2>
             <div class="description">${displayDescription}</div>
 
-            <h2>Datos generales</h2>
+            <h2>General data</h2>
             <div class="split data-summary">
               <table class="mini-table summary-table">
                 <thead>
                   <tr>
-                    <th>Dimensiones</th>
+                    <th>Dimensions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1121,26 +1249,26 @@
                     <td>${dimensionText}</td>
                   </tr>
                   <tr>
-                    <td>Peso: ${weightText}</td>
+                    <td>Weight: ${weightText}</td>
                   </tr>
                 </tbody>
               </table>
               <table class="mini-table summary-table">
                 <thead>
                   <tr>
-                    <th>Colores</th>
+                    <th>Colors</th>
                   </tr>
                 </thead>
                 <tbody>
                   ${colorText.length
                     ? colorText.map((c) => `<tr><td>${c}</td></tr>`).join("")
-                    : `<tr><td>Ingresar dato</td></tr>`}
+                    : `<tr><td>Enter data</td></tr>`}
                 </tbody>
               </table>
               <table class="mini-table summary-table">
                 <thead>
                   <tr>
-                    <th>Montaje</th>
+                    <th>Product Type</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1152,7 +1280,7 @@
               <table class="mini-table summary-table">
                 <thead>
                   <tr>
-                    <th>Equipo</th>
+                    <th>Equipment</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1163,7 +1291,7 @@
               </table>
             </div>
 
-            <h2>Datos técnicos</h2>
+            <h2>Technical data</h2>
             <div class="tech-grid">
               ${renderTechTable(leftTech, rightTech.length === 0)}
               ${rightTech.length ? renderTechTable(rightTech) : ""}
@@ -1172,14 +1300,14 @@
 
             ${
               diagramSrc
-                ? `<h2>Fotometría</h2>
+                ? `<h2>Photometry</h2>
             <div class="diagram">
-              <img src="${diagramSrc}" alt="Diagrama" />
+              <img src="${diagramSrc}" alt="Diagram" />
             </div>`
                 : ""
             }
 
-            <h2>Certificaciones</h2>
+            <h2>Certifications</h2>
             <div class="icon-row">${iconHtml}</div>
             ${footerNoteText ? `<div class="footer-note">${footerNoteText}</div>` : ""}
           </div>`;
@@ -1316,10 +1444,10 @@
         const canvas = await html2canvas(sheet, { scale: 2, scrollY: -window.scrollY });
         const imageData = canvas.toDataURL("image/png");
 
-        const pdf = new jspdf.jsPDF("p", "pt", "letter");
+        const pdf = new jspdf.jsPDF("p", "pt", "a4");
         const pageWidth = pdf.internal.pageSize.getWidth();
         const pageHeight = pdf.internal.pageSize.getHeight();
-        const margin = 42.52; // 1.5 cm
+        const margin = 56.69; // 20mm - padding profesional A4
         const printableWidth = pageWidth - margin * 2;
         const printableHeight = pageHeight - margin * 2;
         const scale = printableWidth / canvas.width;
@@ -1363,14 +1491,81 @@
           position += sliceHeight;
         }
 
-        const fileName = (document.getElementById("productName").value || "ficha")
+        const fileName = (document.getElementById("productName").value || "datasheet")
           .toLowerCase()
           .replace(/\s+/g, "-");
         pdf.save(`${fileName}.pdf`);
       };
 
-      document.getElementById("exportButton").addEventListener("click", exportPDF);
-      document.getElementById("printButton").addEventListener("click", () => window.print());
+      const viewerEl = document.getElementById("fichaViewer");
+      const viewerDocument = document.getElementById("viewerDocument");
+
+      const openViewer = () => {
+        const preview = document.getElementById("preview");
+        if (preview && preview.innerHTML.trim()) {
+          viewerDocument.innerHTML = preview.innerHTML;
+          viewerEl.classList.add("open");
+          document.body.style.overflow = "hidden";
+        }
+      };
+
+      const closeViewer = () => {
+        viewerEl.classList.remove("open");
+        document.body.style.overflow = "";
+      };
+
+      document.getElementById("viewerButton").addEventListener("click", openViewer);
+      document.getElementById("viewerClose").addEventListener("click", closeViewer);
+      viewerEl.addEventListener("click", (e) => {
+        if (e.target === viewerEl) closeViewer();
+      });
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape" && viewerEl.classList.contains("open")) closeViewer();
+      });
+
+      document.getElementById("viewerPrint").addEventListener("click", () => {
+        if (!viewerEl.classList.contains("open")) openViewer();
+        document.body.classList.add("viewer-printing");
+        setTimeout(() => {
+          window.print();
+        }, 100);
+      });
+      window.addEventListener("afterprint", () => {
+        document.body.classList.remove("viewer-printing");
+      });
+
+      document.getElementById("viewerDownloadPdf").addEventListener("click", async () => {
+        const sheet = document.querySelector("#viewerDocument .preview-sheet");
+        if (!sheet) return;
+        const canvas = await html2canvas(sheet, { scale: 2, scrollY: -window.scrollY });
+        const imageData = canvas.toDataURL("image/png");
+        const pdf = new jspdf.jsPDF("p", "pt", "a4");
+        const pageWidth = pdf.internal.pageSize.getWidth();
+        const pageHeight = pdf.internal.pageSize.getHeight();
+        const margin = 56.69;
+        const printableWidth = pageWidth - margin * 2;
+        const printableHeight = pageHeight - margin * 2;
+        const scale = printableWidth / canvas.width;
+        const pageHeightPx = printableHeight / scale;
+        let position = 0;
+        while (position < canvas.height) {
+          const sliceCanvas = document.createElement("canvas");
+          const sliceHeight = Math.min(pageHeightPx, canvas.height - position);
+          if (sliceHeight <= 0) break;
+          sliceCanvas.width = canvas.width;
+          sliceCanvas.height = sliceHeight;
+          const sliceCtx = sliceCanvas.getContext("2d");
+          sliceCtx.fillStyle = "#ffffff";
+          sliceCtx.fillRect(0, 0, sliceCanvas.width, sliceCanvas.height);
+          sliceCtx.drawImage(canvas, 0, position, canvas.width, sliceHeight, 0, 0, canvas.width, sliceHeight);
+          const sliceData = sliceCanvas.toDataURL("image/png");
+          if (position > 0) pdf.addPage();
+          pdf.addImage(sliceData, "PNG", margin, margin, printableWidth, sliceHeight * scale);
+          position += sliceHeight;
+        }
+        const fileName = (document.getElementById("productName").value || "datasheet").toLowerCase().replace(/\s+/g, "-");
+        pdf.save(`${fileName}.pdf`);
+      });
 
       loadDefaults();
     </script>
